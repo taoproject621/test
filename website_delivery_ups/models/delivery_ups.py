@@ -142,6 +142,7 @@ class ProviderUPS(models.Model):
 
         return {'success': True,
                 'price': price,
+                'arrival_date': result['arrival_date'],
                 'error_message': False,
                 'warning_message': False}
 

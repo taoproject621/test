@@ -102,12 +102,14 @@ UPS_ERROR_MAP = {
 
 class Package():
     def __init__(self, carrier, weight, quant_pack=False, name=''):
-        self.weight = carrier._ups_convert_weight(weight, carrier.ups_package_weight_unit)
+        self.weight = carrier._ups_convert_weight(
+            weight, carrier.ups_package_weight_unit)
         self.weight_unit = carrier.ups_package_weight_unit
         self.name = name
         self.dimension_unit = carrier.ups_package_dimension_unit
         if quant_pack:
-            self.dimension = {'length': quant_pack.length, 'width': quant_pack.width, 'height': quant_pack.height}
+            self.dimension = {'length': quant_pack.length,
+                              'width': quant_pack.width, 'height': quant_pack.height}
         else:
             self.dimension = {'length': carrier.ups_default_packaging_id.length,
                               'width': carrier.ups_default_packaging_id.width,
@@ -159,12 +161,14 @@ class UPSRequest():
         # set the detail which require to authenticate
         user_token = {'Username': self.username, 'Password': self.password}
         access_token = {'AccessLicenseNumber': self.access_number}
-        security = client.get_element('ns0:UPSSecurity')(UsernameToken=user_token, ServiceAccessToken=access_token)
+        security = client.get_element('ns0:UPSSecurity')(
+            UsernameToken=user_token, ServiceAccessToken=access_token)
         security['location'] = '%s%s' % (self.endurl, api)
         client.set_default_soapheaders([security])
 
     def _set_client(self, wsdl, api, root):
-        wsdl_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), wsdl)
+        wsdl_path = os.path.join(os.path.dirname(
+            os.path.realpath(__file__)), wsdl)
         client = Client('file:///%s' % wsdl_path.lstrip('/'),
                         plugins=[FixRequestNamespacePlug(root), LogPlugin(self.debug_logger)])
         self.factory_ns2 = client.type_factory('ns2')
@@ -176,9 +180,11 @@ class UPSRequest():
         return re.sub('[^0-9]', '', phone)
 
     def check_required_value(self, shipper, ship_from, ship_to, order=False, picking=False):
-        required_field = {'city': 'City', 'zip': 'ZIP code', 'country_id': 'Country', 'phone': 'Phone'}
+        required_field = {'city': 'City', 'zip': 'ZIP code',
+                          'country_id': 'Country', 'phone': 'Phone'}
         # Check required field for shipper
-        res = [required_field[field] for field in required_field if not shipper[field]]
+        res = [required_field[field]
+               for field in required_field if not shipper[field]]
         if shipper.country_id.code in ('US', 'CA', 'IE') and not shipper.state_id.code:
             res.append('State')
         if not shipper.street and not shipper.street2:
@@ -188,7 +194,8 @@ class UPSRequest():
         if len(self._clean_phone_number(shipper.phone)) < 10:
             return _(UPS_ERROR_MAP.get('120115'))
         # Check required field for warehouse address
-        res = [required_field[field] for field in required_field if not ship_from[field]]
+        res = [required_field[field]
+               for field in required_field if not ship_from[field]]
         if ship_from.country_id.code in ('US', 'CA', 'IE') and not ship_from.state_id.code:
             res.append('State')
         if not ship_from.street and not ship_from.street2:
@@ -198,7 +205,8 @@ class UPSRequest():
         if len(self._clean_phone_number(ship_from.phone)) < 10:
             return _(UPS_ERROR_MAP.get('120313'))
         # Check required field for recipient address
-        res = [required_field[field] for field in required_field if field != 'phone' and not ship_to[field]]
+        res = [required_field[field]
+               for field in required_field if field != 'phone' and not ship_to[field]]
         if ship_to.country_id.code in ('US', 'CA', 'IE') and not ship_to.state_id.code:
             res.append('State')
         if not ship_to.street and not ship_to.street2:
@@ -272,9 +280,11 @@ class UPSRequest():
             if cod_info:
                 package.PackageServiceOptions = self.factory_ns2.PackageServiceOptionsType()
                 package.PackageServiceOptions.COD = self.factory_ns2.CODType()
-                package.PackageServiceOptions.COD.CODFundsCode = str(cod_info['funds_code'])
+                package.PackageServiceOptions.COD.CODFundsCode = str(
+                    cod_info['funds_code'])
                 package.PackageServiceOptions.COD.CODAmount = self.factory_ns2.CODAmountType()
-                package.PackageServiceOptions.COD.CODAmount.MonetaryValue = cod_info['monetary_value']
+                package.PackageServiceOptions.COD.CODAmount.MonetaryValue = cod_info[
+                    'monetary_value']
                 package.PackageServiceOptions.COD.CODAmount.CurrencyCode = cod_info['currency']
 
             package.PackageWeight = self.factory_ns2.PackageWeightType()
@@ -311,7 +321,7 @@ class UPSRequest():
         """
         client = self._set_client(self.rate_wsdl, 'Rate', 'RateRequest')
         request = self.factory_ns3.RequestType()
-        request.RequestOption = 'Rate'
+        request.RequestOption = 'Ratetimeintransit'
 
         classification = self.factory_ns2.CodeDescriptionType()
         classification.Code = '00'  # Get rates for the shipper account
@@ -327,7 +337,8 @@ class UPSRequest():
         shipment.Shipper = self.factory_ns2.ShipperType()
         shipment.Shipper.Name = shipper.name or ''
         shipment.Shipper.Address = self.factory_ns2.AddressType()
-        shipment.Shipper.Address.AddressLine = [shipper.street or '', shipper.street2 or '']
+        shipment.Shipper.Address.AddressLine = [
+            shipper.street or '', shipper.street2 or '']
         shipment.Shipper.Address.City = shipper.city or ''
         shipment.Shipper.Address.PostalCode = shipper.zip or ''
         shipment.Shipper.Address.CountryCode = shipper.country_id.code or ''
@@ -336,10 +347,22 @@ class UPSRequest():
         shipment.Shipper.ShipperNumber = self.shipper_number or ''
         # shipment.Shipper.Phone.Number = shipper.phone or ''
 
+        shipment.ShipmentTotalWeight = self.factory_ns2.ShipmentWeightType()
+        shipment.ShipmentTotalWeight.UnitOfMeasurement = self.factory_ns2.CodeDescriptionType()
+        shipment.ShipmentTotalWeight.UnitOfMeasurement.Code = 'KGS'
+        shipment.ShipmentTotalWeight.Weight = '2'
+
+        shipment.InvoiceLineTotal = self.factory_ns2.InvoiceLineTotalType()
+        shipment.InvoiceLineTotal.CurrencyCode = 'EUR'
+        shipment.InvoiceLineTotal.MonetaryValue = '50'
+        shipment.DeliveryTimeInformation = self.factory_ns2.TimeInTransitRequestType()
+        shipment.DeliveryTimeInformation.PackageBillType = '03'
+
         shipment.ShipFrom = self.factory_ns2.ShipFromType()
         shipment.ShipFrom.Name = ship_from.name or ''
         shipment.ShipFrom.Address = self.factory_ns2.AddressType()
-        shipment.ShipFrom.Address.AddressLine = [ship_from.street or '', ship_from.street2 or '']
+        shipment.ShipFrom.Address.AddressLine = [
+            ship_from.street or '', ship_from.street2 or '']
         shipment.ShipFrom.Address.City = ship_from.city or ''
         shipment.ShipFrom.Address.PostalCode = ship_from.zip or ''
         shipment.ShipFrom.Address.CountryCode = ship_from.country_id.code or ''
@@ -350,7 +373,8 @@ class UPSRequest():
         shipment.ShipTo = self.factory_ns2.ShipToType()
         shipment.ShipTo.Name = ship_to.name or ''
         shipment.ShipTo.Address = self.factory_ns2.AddressType()
-        shipment.ShipTo.Address.AddressLine = [ship_to.street or '', ship_to.street2 or '']
+        shipment.ShipTo.Address.AddressLine = [
+            ship_to.street or '', ship_to.street2 or '']
         shipment.ShipTo.Address.City = ship_to.city or ''
         shipment.ShipTo.Address.PostalCode = ship_to.zip or ''
         shipment.ShipTo.Address.CountryCode = ship_to.country_id.code or ''
@@ -364,7 +388,7 @@ class UPSRequest():
         shipment.Service.Code = service_type or ''
         shipment.Service.Description = 'Service Code'
         if service_type == "96":
-            shipment.NumOfPieces = int(shipment_info.get('total_qty'))
+            shipment.NumOfPieces = int(shipment_info.get('total_qty')) if shipment_info.get('total_qty') else 0
 
         if saturday_delivery:
             shipment.ShipmentServiceOptions = self.factory_ns2.ShipmentServiceOptionsType()
@@ -394,11 +418,16 @@ class UPSRequest():
                                   0].NegotiatedRateCharges.TotalCharge.MonetaryValue or None
 
             result['price'] = negotiated_rate or response.RatedShipment[0].TotalCharges.MonetaryValue
+            result['arrival_date'] = response.RatedShipment[0].TimeInTransit.ServiceSummary[
+                0].EstimatedArrival.Arrival.Date
             return result
 
         except Fault as e:
-            code = e.detail.xpath("//err:PrimaryErrorCode/err:Code", namespaces=self.ns)[0].text
-            description = e.detail.xpath("//err:PrimaryErrorCode/err:Description", namespaces=self.ns)[0].text
+            # _logger.exception(e)
+            code = e.detail.xpath(
+                "//err:PrimaryErrorCode/err:Code", namespaces=self.ns)[0].text
+            description = e.detail.xpath(
+                "//err:PrimaryErrorCode/err:Description", namespaces=self.ns)[0].text
             return self.get_error_message(code, description)
         except IOError as e:
             return self.get_error_message('0', 'UPS Server Not Found:\n%s' % e)
